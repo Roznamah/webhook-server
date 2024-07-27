@@ -1,4 +1,11 @@
-const express = require("express");
+const express = require('express');
+const { Pool } = require('pg');
+require('dotenv').config();
+
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 // Create an Express app and listen for incoming requests on port 3000
 const app = express();
@@ -21,14 +28,25 @@ router.get("/", (req, res) => {
 });
 
 // Handle POST requests to specific URLs i.e. webhook endpoints
-router.post("/webhook-1", (req, res) => {
-  console.log(req.body);
-  res.send("Webhook 1 successfully received.");
+router.post("/github-app", async (req, res) => {
+  const payload = req.body;
+
+  try {
+      await pool.query('INSERT INTO webhooks (payload) VALUES ($1)', [payload]);
+      res.status(200).send('Webhook received and stored successfully.');
+  } catch (error) {
+      console.error('Error storing webhook:', error);
+      res.status(500).send('Internal Server Error');
+  }
+  // get the record id of the last inserted record and return in console log
+  const { rows } = await pool.query('SELECT id FROM webhooks ORDER BY id DESC LIMIT 1');
+  // ([timestamp]) Recieved webhook from GitHub: {id}
+  console.log(`[${new Date().toISOString()}] Received webhook from GitHub: ${rows[0].id}`);
 });
 
-router.post("/webhook-2", (req, res) => {
+router.post("/test-1", (req, res) => {
   console.log(req.body);
-  res.send("Webhook 2 successfully received.");
+  res.send("Test 1 weebhook successfully received.");
 });
 
 // Mount the router middleware
